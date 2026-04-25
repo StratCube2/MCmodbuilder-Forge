@@ -88,7 +88,8 @@ mod.zip
     └── main/
         ├── java/
         └── resources/
-            └── fabric.mod.json
+            └── META-INF
+                  └── mods.toml
 ```
 
 > Make sure your zip follows standard mod project conventions or the build may fail.
