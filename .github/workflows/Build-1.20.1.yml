@@ -36,10 +36,10 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Set up Gradle 8.8
+      - name: Set up Gradle 7.5.2
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.8'
+          gradle-version: '7.5.2'
 
       - name: Build mod with Gradle
         working-directory: mod_extracted
