@@ -102,7 +102,6 @@ mod.zip
 |---|---|
 | Workflow doesn't appear | Check that Actions are enabled in your fork's settings |
 | Build fails immediately | Confirm your file is named exactly `mod.zip` |
-| Wrong mod version built | Double-check you selected the correct branch when running the workflow |
 | Artifacts missing after run | The workflow may have failed — check the logs for errors |
 
 ---
