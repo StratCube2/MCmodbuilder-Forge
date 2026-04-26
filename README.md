@@ -1,4 +1,4 @@
-# ModBuilder (Forge)
+# ModBuilder ((Neo)Forge)
 
 > A GitHub Actions-powered build pipeline for packaging Minecraft Forge mods — no local toolchain required.
 
