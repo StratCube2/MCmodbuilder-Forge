@@ -11,6 +11,7 @@ ModBuilder lets you compile and package your Minecraft Forge mod entirely throug
 ### Versions supported
 Forge
 - 1.20.1
+
 NeoForge
 - None rn
 ---
