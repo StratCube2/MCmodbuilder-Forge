@@ -13,7 +13,7 @@ Forge
 - 1.20.1
 
 NeoForge
-- None rn
+- 1.20.1 (untested)
 ---
 
 ## Prerequisites
