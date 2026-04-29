@@ -1,0 +1,133 @@
+name: Build-Custom
+
+on:
+  push:
+    paths:
+      - '*.zip'
+      - 'input/*.zip'
+      - 'info.json'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Find zip and extract
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          zips=( input/*.zip *.zip )
+          if [[ ${#zips[@]} -eq 0 ]]; then
+            echo "ERROR: No .zip file found in input/ or repo root." >&2
+            exit 1
+          fi
+          ZIP="${zips[0]}"
+          echo "Using zip: $ZIP"
+          mkdir -p work
+          unzip "$ZIP" -d work
+
+      - name: Read info.json
+        run: |
+          set -euo pipefail
+          # Prefer info.json bundled inside the zip; fall back to repo root
+          INFO_FILE=$(find work -maxdepth 4 -name "info.json" | sort | head -1)
+          if [[ -n "$INFO_FILE" ]]; then
+            echo "Found info.json inside zip at: $INFO_FILE"
+          elif [[ -f "info.json" ]]; then
+            INFO_FILE="info.json"
+            echo "Found info.json in repository root."
+          else
+            echo "ERROR: info.json not found inside the zip or in the repository root." >&2
+            exit 1
+          fi
+          GRADLE_VERSION=$(jq -r '.gradle_version' "$INFO_FILE")
+          JAVA_VERSION=$(jq -r '.java_version' "$INFO_FILE")
+          JAVA_VENDOR=$(jq -r '.java_vendor' "$INFO_FILE")
+          if [[ -z "$GRADLE_VERSION" || "$GRADLE_VERSION" == "null" ]]; then
+            echo "ERROR: gradle_version missing from info.json." >&2
+            exit 1
+          fi
+          if [[ -z "$JAVA_VERSION" || "$JAVA_VERSION" == "null" ]]; then
+            echo "ERROR: java_version missing from info.json." >&2
+            exit 1
+          fi
+          if [[ -z "$JAVA_VENDOR" || "$JAVA_VENDOR" == "null" ]]; then
+            echo "ERROR: java_vendor missing from info.json." >&2
+            exit 1
+          fi
+          echo "GRADLE_VERSION=$GRADLE_VERSION" >> "$GITHUB_ENV"
+          echo "JAVA_VERSION=$JAVA_VERSION" >> "$GITHUB_ENV"
+          echo "JAVA_VENDOR=$JAVA_VENDOR" >> "$GITHUB_ENV"
+          # Determine whether to use gradle wrapper
+          GRADLE_LOWER="${GRADLE_VERSION,,}"
+          if [[ "$GRADLE_LOWER" == *"wrapper"* ]]; then
+            echo "USE_WRAPPER=true" >> "$GITHUB_ENV"
+          else
+            echo "USE_WRAPPER=false" >> "$GITHUB_ENV"
+          fi
+
+      - name: Detect Gradle project root
+        run: |
+          set -euo pipefail
+          PROJECT_ROOT=""
+          for gradle_file in settings.gradle settings.gradle.kts build.gradle build.gradle.kts; do
+            found=$(find work -maxdepth 4 -name "$gradle_file" | sort | head -1)
+            if [[ -n "$found" ]]; then
+              PROJECT_ROOT=$(dirname "$found")
+              echo "Detected project root via $gradle_file: $PROJECT_ROOT"
+              break
+            fi
+          done
+          if [[ -z "$PROJECT_ROOT" ]]; then
+            echo "ERROR: No Gradle project root found after extraction." >&2
+            exit 1
+          fi
+          echo "PROJECT_ROOT=$PROJECT_ROOT" >> "$GITHUB_ENV"
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_VENDOR }}
+
+      - name: Set up Gradle (when not using wrapper)
+        if: env.USE_WRAPPER == 'false'
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
+
+      - name: Set up Gradle (wrapper cache only)
+        if: env.USE_WRAPPER == 'true'
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build mod with Gradle
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_ROOT"
+          if [[ "$USE_WRAPPER" == "true" ]]; then
+            if [[ ! -f "gradlew" ]]; then
+              echo "ERROR: gradle_version is set to wrapper but gradlew was not found in the project." >&2
+              exit 1
+            fi
+            echo "Using Gradle wrapper (./gradlew)"
+            chmod +x gradlew
+            ./gradlew build --no-daemon
+          else
+            echo "Using system Gradle $GRADLE_VERSION"
+            if ! command -v gradle &>/dev/null; then
+              echo "ERROR: gradle command not available." >&2
+              exit 1
+            fi
+            gradle --version
+            gradle build --no-daemon
+          fi
+
+      - name: Upload built mod artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mod-build
+          path: ${{ env.PROJECT_ROOT }}/build/libs/*.jar
