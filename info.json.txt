@@ -1,0 +1,8 @@
+{
+  "gradle_version": "9.4.1",
+  "java_version": "25.0.2",
+  "java_vendor": "temurin"
+}
+
+This an example version of info.json.
+This file can be used by build-custom to build using a custom gradle and java version.
