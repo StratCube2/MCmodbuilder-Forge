@@ -12,9 +12,11 @@ ModBuilder lets you compile and package your Minecraft Forge mod entirely throug
 Forge
 - 1.20.1
 - 1.8.9
+- Custom
 
 NeoForge
 - 1.20.1 (untested)
+- Custom
 ---
 
 ## Prerequisites
